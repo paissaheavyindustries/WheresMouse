@@ -1,0 +1,20 @@
+C:\Users\Moskau\AppData\Roaming\XIVLauncher\devPlugins\SamplePlugin\goat.png
+C:\Users\Moskau\AppData\Roaming\XIVLauncher\devPlugins\SamplePlugin\Where's Mouse.deps.json
+C:\Users\Moskau\AppData\Roaming\XIVLauncher\devPlugins\SamplePlugin\Where's Mouse.dll
+C:\Users\Moskau\AppData\Roaming\XIVLauncher\devPlugins\SamplePlugin\Where's Mouse.pdb
+\\nasse\Vault\Work\Programming\net\Where's Mouse\SamplePlugin\obj\x64\Debug\Where's Mouse.GeneratedMSBuildEditorConfig.editorconfig
+\\nasse\Vault\Work\Programming\net\Where's Mouse\SamplePlugin\obj\x64\Debug\Where's Mouse.AssemblyInfoInputs.cache
+\\nasse\Vault\Work\Programming\net\Where's Mouse\SamplePlugin\obj\x64\Debug\Where's Mouse.AssemblyInfo.cs
+\\nasse\Vault\Work\Programming\net\Where's Mouse\SamplePlugin\obj\x64\Debug\Where's Mouse.csproj.CoreCompileInputs.cache
+\\nasse\Vault\Work\Programming\net\Where's Mouse\SamplePlugin\obj\x64\Debug\Where's Mouse.dll
+\\nasse\Vault\Work\Programming\net\Where's Mouse\SamplePlugin\obj\x64\Debug\Where's Mouse.pdb
+\\nasse\Vault\Work\Programming\net\Where's Mouse\WheresMouse\obj\x64\Debug\Where's Mouse.csproj.AssemblyReference.cache
+\\nasse\Vault\Work\Programming\net\Where's Mouse\WheresMouse\obj\x64\Debug\Where's Mouse.GeneratedMSBuildEditorConfig.editorconfig
+\\nasse\Vault\Work\Programming\net\Where's Mouse\WheresMouse\obj\x64\Debug\Where's Mouse.AssemblyInfoInputs.cache
+\\nasse\Vault\Work\Programming\net\Where's Mouse\WheresMouse\obj\x64\Debug\Where's Mouse.AssemblyInfo.cs
+\\nasse\Vault\Work\Programming\net\Where's Mouse\WheresMouse\obj\x64\Debug\Where's Mouse.csproj.CoreCompileInputs.cache
+\\nasse\Vault\Work\Programming\net\Where's Mouse\WheresMouse\obj\x64\Debug\Where's Mouse.dll
+\\nasse\Vault\Work\Programming\net\Where's Mouse\WheresMouse\obj\x64\Debug\Where's Mouse.pdb
+C:\Users\Moskau\AppData\Roaming\XIVLauncher\devPlugins\WheresMouse\Where's Mouse.deps.json
+C:\Users\Moskau\AppData\Roaming\XIVLauncher\devPlugins\WheresMouse\Where's Mouse.dll
+C:\Users\Moskau\AppData\Roaming\XIVLauncher\devPlugins\WheresMouse\Where's Mouse.pdb

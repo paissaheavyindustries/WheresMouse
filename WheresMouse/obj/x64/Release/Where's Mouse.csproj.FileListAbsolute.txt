@@ -1,0 +1,10 @@
+C:\Users\Moskau\AppData\Roaming\XIVLauncher\devPlugins\SamplePlugin\goat.png
+C:\Users\Moskau\AppData\Roaming\XIVLauncher\devPlugins\SamplePlugin\Where's Mouse.deps.json
+C:\Users\Moskau\AppData\Roaming\XIVLauncher\devPlugins\SamplePlugin\Where's Mouse.dll
+C:\Users\Moskau\AppData\Roaming\XIVLauncher\devPlugins\SamplePlugin\Where's Mouse.pdb
+\\nasse\Vault\Work\Programming\net\Where's Mouse\SamplePlugin\obj\x64\Release\Where's Mouse.GeneratedMSBuildEditorConfig.editorconfig
+\\nasse\Vault\Work\Programming\net\Where's Mouse\SamplePlugin\obj\x64\Release\Where's Mouse.AssemblyInfoInputs.cache
+\\nasse\Vault\Work\Programming\net\Where's Mouse\SamplePlugin\obj\x64\Release\Where's Mouse.AssemblyInfo.cs
+\\nasse\Vault\Work\Programming\net\Where's Mouse\SamplePlugin\obj\x64\Release\Where's Mouse.csproj.CoreCompileInputs.cache
+\\nasse\Vault\Work\Programming\net\Where's Mouse\SamplePlugin\obj\x64\Release\Where's Mouse.dll
+\\nasse\Vault\Work\Programming\net\Where's Mouse\SamplePlugin\obj\x64\Release\Where's Mouse.pdb
