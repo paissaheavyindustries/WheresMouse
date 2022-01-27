@@ -1,6 +1,6 @@
 # Where's Mouse?
 
-This plugin is an accessibility plugin to help you locate your mouse cursor when you need it the most.
+This Dalamud plugin is an accessibility plugin to help you locate your mouse cursor when you need it the most.
 
 A vigorous shake of your wrist is enough to divine the location of your mouse pointer, even if it's cruising on other monitors or out of the game.
 
