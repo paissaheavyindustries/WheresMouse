@@ -4,6 +4,8 @@ This plugin is an accessibility plugin to help you locate your mouse cursor when
 
 A vigorous shake of your wrist is enough to divine the location of your mouse pointer, even if it's cruising on other monitors or out of the game.
 
+![Example indicator](https://i.imgur.com/xOWZa3s.jpg)
+
 ## How does it work
 
 When you move your mouse, that movement distance is accumulated into a counter, and when the counter hits an upper threshold value, the effect is enabled. This counter decays over time of course, to prevent it from accumulating and triggering from minute movements. It's intended that only lots of movement in a small time frame (ie. a vigorous shake) would trigger the effect.
