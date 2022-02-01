@@ -37,3 +37,9 @@ You will find the plugin in my Dalamud plugin repository at https://github.com/p
   * "Draw intercardinal lines" draws intercardinal (diagonal) lines from the mouse location to (what is practically) infinity
   * "Intercardinal line thickness in pixels" determines how thick the lines will be
   * "Intercardinal line color" defines the color of the lines  
+
+## Support / Discord
+
+There's a publicly available Discord server for announcements, suggestions, and questions - feel free to join at:
+
+https://discord.gg/6f9MY55
