@@ -12,6 +12,10 @@ When you move your mouse, that movement distance is accumulated into a counter, 
 
 If the effect is active, the counter continues to decay, and when the counter has decayed under a lower threshold value the effect will be disabled.
 
+## How to install
+
+You will find the plugin in my Dalamud plugin repository at https://github.com/paissaheavyindustries/Dalamud-Repo! Follow the instructions there on how to use the repository.
+
 ## In-game usage and configuration
 
 * Type `/wheremouse` to open the configuration UI
