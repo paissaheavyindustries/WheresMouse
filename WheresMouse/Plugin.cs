@@ -5,9 +5,14 @@ using Dalamud.Game.Command;
 using Dalamud.Game.Gui;
 using Dalamud.Interface;
 using Dalamud.IoC;
+using Dalamud.Logging;
 using Dalamud.Plugin;
 using ImGuiNET;
+using System;
+using System.Collections.Generic;
+using System.Diagnostics;
 using System.Numerics;
+using System.Threading.Tasks;
 
 namespace WheresMouse
 {
@@ -23,23 +28,15 @@ namespace WheresMouse
         private Condition _cd { get; init; }
 
         private Wherenator _where = new Wherenator();
-        private bool _configOpen = false;
-        private Config _cfg = new Config();
+        private Config _cfg;
+        private float _adjusterX = 0.0f;
+        private bool _drawingStarted = false;
+        private DateTime _lastUpdate = DateTime.Now;
+        private Vector2 _prevPos;
+        private bool firstpos = true;
+        private DateTime _loaded = DateTime.Now;
 
-        private bool _cfgEnabled;        
-        private bool _cfgOnlyShowInCombat;
-        private bool _cfgDrawIndicatorCircle;
-        private bool _cfgDrawIndicatorCardinal;
-        private bool _cfgDrawIndicatorIntercardinal;
-        private int _cfgIndicatorCircleRadius;
-        private int _cfgIndicatorCardinalThickness;
-        private int _cfgIndicatorIntercardinalThickness;
-        private Vector3 _cfgIndicatorCircleColor;
-        private Vector3 _cfgIndicatorCardinalColor;
-        private Vector3 _cfgIndicatorIntercardinalColor;
-        private Vector2 _cfgDistanceHysteresis;
-        private float _cfgDistanceDecayFactor;
-        private float _cfgActiveDecayFactor;
+        private List<Maustrale> maustrales = new List<Maustrale>();
 
         public Plugin(
             [RequiredVersion("1.0")] DalamudPluginInterface pluginInterface,
@@ -48,26 +45,13 @@ namespace WheresMouse
             [RequiredVersion("1.0")] Framework framework,
             [RequiredVersion("1.0")] GameGui gameGui,
             [RequiredVersion("1.0")] Condition condition
-        ) {
+        )
+        {
             _pi = pluginInterface;
             _cm = commandManager;
             _cs = clientState;
-            _cd = condition;            
+            _cd = condition;
             _cfg = _pi.GetPluginConfig() as Config ?? new Config();
-            _cfgEnabled = _cfg.Enabled;
-            _cfgOnlyShowInCombat = _cfg.OnlyShowInCombat;
-            _cfgDrawIndicatorCircle = _cfg.DrawIndicatorCircle;
-            _cfgDrawIndicatorCardinal = _cfg.DrawIndicatorCardinal;
-            _cfgDrawIndicatorIntercardinal = _cfg.DrawIndicatorIntercardinal;
-            _cfgIndicatorCircleRadius = _cfg.IndicatorCircleRadius;
-            _cfgIndicatorCardinalThickness = _cfg.IndicatorCardinalThickness;
-            _cfgIndicatorIntercardinalThickness = _cfg.IndicatorIntercardinalThickness;
-            _cfgIndicatorCircleColor = _cfg.IndicatorCircleColor;
-            _cfgIndicatorCardinalColor = _cfg.IndicatorCardinalColor;
-            _cfgIndicatorIntercardinalColor = _cfg.IndicatorIntercardinalColor;
-            _cfgDistanceHysteresis = _cfg.DistanceHysteresis;
-            _cfgDistanceDecayFactor = _cfg.DistanceDecayFactor;
-            _cfgActiveDecayFactor = _cfg.ActiveDecayFactor;
             _pi.UiBuilder.Draw += DrawUI;
             _pi.UiBuilder.OpenConfigUi += DrawConfigUI;
             _cm.AddHandler("/wheremouse", new CommandInfo(OnCommand)
@@ -80,97 +64,24 @@ namespace WheresMouse
         {
             _pi.UiBuilder.Draw -= DrawUI;
             _pi.UiBuilder.OpenConfigUi -= DrawConfigUI;
+            SaveConfig();
             _cm.RemoveHandler("/wheremouse");
+        }
+
+        public void SaveConfig()
+        {
+            PluginLog.Debug("Saving config");
+            _pi.SavePluginConfig(_cfg);
         }
 
         private void OnCommand(string command, string args)
         {
-            _cfgEnabled = _cfg.Enabled;
-            _cfgOnlyShowInCombat = _cfg.OnlyShowInCombat;
-            _cfgDrawIndicatorCircle = _cfg.DrawIndicatorCircle;
-            _cfgDrawIndicatorCardinal = _cfg.DrawIndicatorCardinal;
-            _cfgDrawIndicatorIntercardinal = _cfg.DrawIndicatorIntercardinal;
-            _cfgIndicatorCircleRadius = _cfg.IndicatorCircleRadius;
-            _cfgIndicatorCardinalThickness = _cfg.IndicatorCardinalThickness;
-            _cfgIndicatorIntercardinalThickness = _cfg.IndicatorIntercardinalThickness;
-            _cfgIndicatorCircleColor = _cfg.IndicatorCircleColor;
-            _cfgIndicatorCardinalColor = _cfg.IndicatorCardinalColor;
-            _cfgIndicatorIntercardinalColor = _cfg.IndicatorIntercardinalColor;
-            _cfgDistanceHysteresis = _cfg.DistanceHysteresis;
-            _cfgDistanceDecayFactor = _cfg.DistanceDecayFactor;
-            _cfgActiveDecayFactor = _cfg.ActiveDecayFactor;
-            _configOpen = true;
+            _cfg.Opened = true;
         }
 
-        private void DrawUI()
+        private void StartDrawing()
         {
-            Vector2 pos = ImGui.GetMousePos();
-            _where.distDecayFactorActive = _cfgActiveDecayFactor;
-            _where.distDecayFactorInactive = _cfgDistanceDecayFactor;
-            if (_cfgDistanceHysteresis.X > _cfgDistanceHysteresis.Y)
-            {
-                _cfgDistanceHysteresis.X = _cfgDistanceHysteresis.Y;
-            }
-            if (_cfgDistanceHysteresis.Y < _cfgDistanceHysteresis.X)
-            {
-                _cfgDistanceHysteresis.Y = _cfgDistanceHysteresis.X;
-            }
-            _where.distHystMin = _cfgDistanceHysteresis.X;
-            _where.distHystMax = _cfgDistanceHysteresis.Y;
-            _where.Update(pos);
-            if (_configOpen == true)
-            {
-                ImGui.SetNextWindowSize(new Vector2(300, 500), ImGuiCond.FirstUseEver);
-                ImGui.Begin("Where's Mouse?", ref _configOpen);
-                ImGui.Checkbox("Indicator enabled", ref _cfgEnabled);
-                ImGui.Checkbox("Only show in combat", ref _cfgOnlyShowInCombat);
-                ImGui.Separator();
-                ImGui.DragFloat2("Distance accumulation hysteresis", ref _cfgDistanceHysteresis, 100.0f, 100, 10000);
-                ImGui.DragFloat("Distance accumulation decay factor", ref _cfgDistanceDecayFactor, 0.01f, 0.1f, 0.99f);
-                ImGui.DragFloat("Active indicator decay factor", ref _cfgActiveDecayFactor, 0.01f, 0.1f, 0.99f);
-                ImGui.Separator();
-                ImGui.Checkbox("Draw circle", ref _cfgDrawIndicatorCircle);
-                ImGui.DragInt("Circle radius in pixels", ref _cfgIndicatorCircleRadius, 1.0f, 10, 300);
-                ImGui.ColorEdit3("Circle color", ref _cfgIndicatorCircleColor, ImGuiColorEditFlags.NoInputs);
-                ImGui.Separator();
-                ImGui.Checkbox("Draw cardinal lines", ref _cfgDrawIndicatorCardinal);
-                ImGui.DragInt("Cardinal line thickness in pixels", ref _cfgIndicatorCardinalThickness, 1.0f, 5, 50);
-                ImGui.ColorEdit3("Cardinal line color", ref _cfgIndicatorCardinalColor, ImGuiColorEditFlags.NoInputs);
-                ImGui.Separator();
-                ImGui.Checkbox("Draw intercardinal lines", ref _cfgDrawIndicatorIntercardinal);
-                ImGui.DragInt("Intercardinal line thickness in pixels", ref _cfgIndicatorIntercardinalThickness, 1.0f, 5, 50);
-                ImGui.ColorEdit3("Intercardinal line color", ref _cfgIndicatorIntercardinalColor, ImGuiColorEditFlags.NoInputs);
-                ImGui.Separator();
-                if (ImGui.Button("Save changes"))
-                {
-                    SaveConfig();
-                }
-                if (ImGui.Button("Revert changes"))
-                {
-                    RevertConfig(_cfg);
-                }
-                if (ImGui.Button("Restore defaults"))
-                {
-                    RestoreConfig();
-                }
-                if (ImGui.Button("Close"))
-                {
-                    _configOpen = false;
-                }
-                ImGui.End();
-            }
-            if (_cfgEnabled == false)
-            {
-                return;
-            }
-            if (_cfgOnlyShowInCombat)
-            {
-                if (!_cd[ConditionFlag.InCombat])
-                {
-                    return;
-                }
-            }
-            if (_where.active == false)
+            if (_drawingStarted == true)
             {
                 return;
             }
@@ -181,126 +92,552 @@ namespace WheresMouse
                 ImGuiWindowFlags.NoInputs | ImGuiWindowFlags.NoNav | ImGuiWindowFlags.NoTitleBar |
                 ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoBackground);
             ImGui.SetWindowSize(ImGui.GetIO().DisplaySize);
-            float opacity = (float)(_where.activePower / 100.0);
-            if (_cfgDrawIndicatorCardinal == true)
+            _drawingStarted = true;
+        }
+
+        private void StopDrawing()
+        {
+            if (_drawingStarted == true)
             {
-                float thickness = (float)(_cfgIndicatorCardinalThickness * (_where.activePower / 100.0)) / 2.0f;
-                ImGui.GetWindowDrawList().AddQuadFilled(
-                    new Vector2(pos.X - thickness, pos.Y - 20000),
-                    new Vector2(pos.X + thickness, pos.Y - 20000),
-                    new Vector2(pos.X + thickness, pos.Y + 20000),
-                    new Vector2(pos.X - thickness, pos.Y + 20000),
-                    ImGui.GetColorU32(new Vector4(
-                        _cfgIndicatorCardinalColor.X,
-                        _cfgIndicatorCardinalColor.Y,
-                        _cfgIndicatorCardinalColor.Z,
-                        opacity
-                    ))
-                );
-                ImGui.GetWindowDrawList().AddQuadFilled(
-                    new Vector2(pos.X - 20000, pos.Y - thickness),
-                    new Vector2(pos.X - 20000, pos.Y + thickness),
-                    new Vector2(pos.X + 20000, pos.Y + thickness),
-                    new Vector2(pos.X + 20000, pos.Y - thickness),
-                    ImGui.GetColorU32(new Vector4(
-                        _cfgIndicatorCardinalColor.X,
-                        _cfgIndicatorCardinalColor.Y,
-                        _cfgIndicatorCardinalColor.Z,
-                        opacity
-                    ))
-                );
+                ImGui.End();
+                ImGui.PopStyleVar();
+                _drawingStarted = false;
             }
-            if (_cfgDrawIndicatorIntercardinal == true)
+        }
+
+        private void Trales()
+        {
+            double delta = (DateTime.Now - _lastUpdate).TotalMilliseconds;
+            _lastUpdate = DateTime.Now;
+            List<Maustrale> graveyard = new List<Maustrale>();
+            foreach (Maustrale m in maustrales)
             {
-                float thickness = (float)(_cfgIndicatorIntercardinalThickness * (_where.activePower / 100.0)) / 2.0f;
-                ImGui.GetWindowDrawList().AddQuadFilled(
-                    new Vector2(pos.X - 20000 - thickness, pos.Y - 20000 + thickness),
-                    new Vector2(pos.X - 20000 + thickness, pos.Y - 20000 - thickness),
-                    new Vector2(pos.X + 20000 + thickness, pos.Y + 20000 - thickness),
-                    new Vector2(pos.X + 20000 - thickness, pos.Y + 20000 + thickness),
-                    ImGui.GetColorU32(new Vector4(
-                        _cfgIndicatorIntercardinalColor.X,
-                        _cfgIndicatorIntercardinalColor.Y,
-                        _cfgIndicatorIntercardinalColor.Z,
-                        opacity
-                    ))
-                );
-                ImGui.GetWindowDrawList().AddQuadFilled(
-                    new Vector2(pos.X - 20000 - thickness, pos.Y + 20000 - thickness),
-                    new Vector2(pos.X - 20000 + thickness, pos.Y + 20000 + thickness),
-                    new Vector2(pos.X + 20000 + thickness, pos.Y - 20000 + thickness),
-                    new Vector2(pos.X + 20000 - thickness, pos.Y - 20000 - thickness),
-                    ImGui.GetColorU32(new Vector4(
-                        _cfgIndicatorIntercardinalColor.X,
-                        _cfgIndicatorIntercardinalColor.Y,
-                        _cfgIndicatorIntercardinalColor.Z,
-                        opacity
-                    ))
-                );
-            }
-            if (_cfgDrawIndicatorCircle == true)
-            {
+                m.TTL -= delta;
+                if (m.TTL < 0.0f)
+                {
+                    graveyard.Add(m);
+                    continue;
+                }
+                double op = m.TTL / m.TTLMax;
                 ImGui.GetWindowDrawList().AddCircleFilled(
-                    new Vector2(pos.X, pos.Y),
-                    (float)(_cfgIndicatorCircleRadius * (_where.activePower / 100.0)),
+                    m.Position,
+                    (float)(_cfg.TrailSize * op),
                     ImGui.GetColorU32(new Vector4(
-                        _cfgIndicatorCircleColor.X,
-                        _cfgIndicatorCircleColor.Y,
-                        _cfgIndicatorCircleColor.Z,
-                        opacity
+                        m.Color.X,
+                        m.Color.Y,
+                        m.Color.Z,
+                        m.Color.W * (float)op
                     )),
-                    100
+                    32
                 );
             }
-            ImGui.End();
-            ImGui.PopStyleVar();
+            foreach (Maustrale m in graveyard)
+            {
+                maustrales.Remove(m);
+            }
+        }
+
+        private void DrawUI()
+        {
+            Vector2 pos = ImGui.GetMousePos();
+            if (firstpos == true)
+            {
+                _prevPos = pos;
+                firstpos = false;
+            }
+            Vector2 delta = Vector2.Subtract(pos, _prevPos);
+            _prevPos = pos;
+            _where.distDecayFactorActive = _cfg.ActiveDecayFactor;
+            _where.distDecayFactorInactive = _cfg.DistanceDecayFactor;
+            /*if (_cfg.DistanceHysteresis.X > _cfg.DistanceHysteresis.Y)
+            {
+                _cfg.DistanceHysteresis.X = _cfg.DistanceHysteresis.Y;
+            }
+            if (_cfg.DistanceHysteresis.Y < _cfg.DistanceHysteresis.X)
+            {
+                _cfg.DistanceHysteresis.Y = _cfg.DistanceHysteresis.X;
+            }*/
+            _where.distHystMin = _cfg.DistanceHysteresis.X;
+            _where.distHystMax = _cfg.DistanceHysteresis.Y;
+            _where.Update(pos);
+            if (_cfg.Opened == true)
+            {
+                ImGui.PushStyleColor(ImGuiCol.TitleBgActive, new Vector4(0.496f, 0.058f, 0.323f, 1.0f));
+                ImGui.PushStyleColor(ImGuiCol.TabActive, new Vector4(0.496f, 0.058f, 0.323f, 1.0f));
+                ImGui.PushStyleColor(ImGuiCol.TabHovered, new Vector4(0.4f, 0.4f, 0.4f, 1.0f));
+                ImGui.SetNextWindowSize(new Vector2(300, 500), ImGuiCond.FirstUseEver);
+                bool open = true;
+                if (ImGui.Begin(Name, ref open, ImGuiWindowFlags.NoCollapse) == false)
+                {
+                    ImGui.End();
+                    ImGui.PopStyleColor(3);
+                    return;
+                }
+                if (open == false)
+                {
+                    _cfg.Opened = false;
+                    ImGui.End();
+                    ImGui.PopStyleColor(3);
+                    return;
+                }
+                ImGuiStylePtr style = ImGui.GetStyle();
+                Vector2 fsz = ImGui.GetContentRegionAvail();
+                fsz.Y -= ImGui.GetTextLineHeight() + (style.ItemSpacing.Y * 2) + style.WindowPadding.Y;
+                ImGui.BeginChild("WhammyFrame", fsz);
+                ImGui.BeginTabBar("Whammy_Main", ImGuiTabBarFlags.None);
+                if (ImGui.BeginTabItem("Shake indicator"))
+                {
+                    ImGui.BeginChild("ShakeChild");
+                    bool enabled = _cfg.Enabled;
+                    if (ImGui.Checkbox("Enabled", ref enabled) == true)
+                    {
+                        _cfg.Enabled = enabled;
+                    }
+                    bool incombat = _cfg.OnlyShowInCombat;
+                    if (ImGui.Checkbox("Only show in combat", ref incombat) == true)
+                    {
+                        _cfg.OnlyShowInCombat = incombat;
+                    }
+                    bool onscreen = _cfg.OnlyOnScreen;
+                    if (ImGui.Checkbox("Only show if mouse is in window", ref onscreen) == true)
+                    {
+                        _cfg.OnlyOnScreen = onscreen;
+                    }
+                    ImGui.Separator();
+                    Vector2 disthyst = _cfg.DistanceHysteresis;
+                    ImGui.Text("Distance accumulation hysteresis");
+                    if (ImGui.SliderFloat2("##Dah", ref disthyst, 100.0f, 10000.0f) == true)
+                    {
+                        _cfg.DistanceHysteresis = disthyst;
+                    }
+                    float distdecay = _cfg.DistanceDecayFactor;
+                    ImGui.Text("Distance accumulation decay factor");
+                    if (ImGui.SliderFloat("##Dadf", ref distdecay, 0.01f, 0.99f) == true)
+                    {
+                        _cfg.DistanceDecayFactor = distdecay;
+                    }
+                    float actdecay = _cfg.ActiveDecayFactor;
+                    ImGui.Text("Active indicator decay factor");
+                    if (ImGui.SliderFloat("##Aidf", ref actdecay, 0.01f, 0.99f) == true)
+                    {
+                        _cfg.ActiveDecayFactor = actdecay;
+                    }
+                    ImGui.Separator();
+                    bool circle = _cfg.DrawIndicatorCircle;
+                    if (ImGui.Checkbox("Draw circle", ref circle) == true)
+                    {
+                        _cfg.DrawIndicatorCircle = circle;
+                    }
+                    int circleradius = _cfg.IndicatorCircleRadius;
+                    ImGui.Text("Circle radius in pixels");
+                    if (ImGui.SliderInt("##Crip", ref circleradius, 10, 300) == true)
+                    {
+                        _cfg.IndicatorCircleRadius = circleradius;
+                    }
+                    Vector3 circlecol = _cfg.IndicatorCircleColor;
+                    if (ImGui.ColorEdit3("Circle color", ref circlecol, ImGuiColorEditFlags.NoInputs) == true)
+                    {
+                        _cfg.IndicatorCircleColor = circlecol;
+                    }
+                    ImGui.Separator();
+                    bool card = _cfg.DrawIndicatorCardinal;
+                    if (ImGui.Checkbox("Draw cardinal lines", ref card) == true)
+                    {
+                        _cfg.DrawIndicatorCardinal = card;
+                    }
+                    int cardthick = _cfg.IndicatorCardinalThickness;
+                    ImGui.Text("Cardinal line thickness in pixels");
+                    if (ImGui.SliderInt("##Cltip", ref cardthick, 5, 50) == true)
+                    {
+                        _cfg.IndicatorCardinalThickness = cardthick;
+                    }
+                    Vector3 cardcolor = _cfg.IndicatorCardinalColor;
+                    if (ImGui.ColorEdit3("Cardinal line color", ref cardcolor, ImGuiColorEditFlags.NoInputs) == true)
+                    {
+                        _cfg.IndicatorCardinalColor = cardcolor;
+                    }
+                    ImGui.Separator();
+                    bool intercard = _cfg.DrawIndicatorIntercardinal;
+                    if (ImGui.Checkbox("Draw intercardinal lines", ref intercard) == true)
+                    {
+                        _cfg.DrawIndicatorIntercardinal = intercard;
+                    }
+                    int intercardthick = _cfg.IndicatorIntercardinalThickness;
+                    ImGui.Text("Intercardinal line thickness in pixels");
+                    if (ImGui.SliderInt("##Iltip", ref intercardthick, 5, 50) == true)
+                    {
+                        _cfg.IndicatorIntercardinalThickness = intercardthick;
+                    }
+                    Vector3 intercardcolor = _cfg.IndicatorIntercardinalColor;
+                    if (ImGui.ColorEdit3("Intercardinal line color", ref intercardcolor, ImGuiColorEditFlags.NoInputs) == true)
+                    {
+                        _cfg.IndicatorIntercardinalColor = intercardcolor;
+                    }
+                    ImGui.EndChild();
+                    ImGui.EndTabItem();
+                }
+                if (ImGui.BeginTabItem("Persistent indicator"))
+                {
+                    ImGui.BeginChild("PerChild");
+                    bool enabled = _cfg.PerEnabled;
+                    if (ImGui.Checkbox("Enabled", ref enabled) == true)
+                    {
+                        _cfg.PerEnabled = enabled;
+                    }
+                    bool incombat = _cfg.PerOnlyShowInCombat;
+                    if (ImGui.Checkbox("Only show in combat", ref incombat) == true)
+                    {
+                        _cfg.PerOnlyShowInCombat = incombat;
+                    }
+                    bool onscreen = _cfg.PerOnlyOnScreen;
+                    if (ImGui.Checkbox("Only show if mouse is in window", ref onscreen) == true)
+                    {
+                        _cfg.PerOnlyOnScreen = onscreen;
+                    }
+                    ImGui.Separator();
+                    int perthick = _cfg.PerIndicatorThickness;
+                    ImGui.Text("Line thickness in pixels");
+                    if (ImGui.SliderInt("##Cltip", ref perthick, 5, 50) == true)
+                    {
+                        _cfg.PerIndicatorThickness = perthick;
+                    }
+                    Vector4 percolor = _cfg.PerIndicatorColor;
+                    if (ImGui.ColorEdit4("Line color", ref percolor, ImGuiColorEditFlags.NoInputs) == true)
+                    {
+                        _cfg.PerIndicatorColor = percolor;
+                    }
+                    ImGui.EndChild();
+                    ImGui.EndTabItem();
+                }
+                if (ImGui.BeginTabItem("Offscreen indicator"))
+                {
+                    ImGui.BeginChild("OfsChild");
+                    bool enabled = _cfg.OfsEnabled;
+                    if (ImGui.Checkbox("Enabled", ref enabled) == true)
+                    {
+                        _cfg.OfsEnabled = enabled;
+                    }
+                    bool incombat = _cfg.OfsOnlyShowInCombat;
+                    if (ImGui.Checkbox("Only show in combat", ref incombat) == true)
+                    {
+                        _cfg.OfsOnlyShowInCombat = incombat;
+                    }
+                    ImGui.Separator();
+                    bool ofsboin = _cfg.OfsBounce;
+                    if (ImGui.Checkbox("Offscreen indicator bounce", ref ofsboin) == true)
+                    {
+                        _cfg.OfsBounce = ofsboin;
+                    }
+                    bool ofsblink = _cfg.OfsBlink;
+                    if (ImGui.Checkbox("Offscreen indicator blink", ref ofsblink) == true)
+                    {
+                        _cfg.OfsBlink = ofsblink;
+                    }
+                    int ofssize = _cfg.OfsIndicatorSize;
+                    ImGui.Text("Offscreen indicator size");
+                    if (ImGui.SliderInt("##Tmt", ref ofssize, 50, 300) == true)
+                    {
+                        _cfg.OfsIndicatorSize = ofssize;
+                    }
+                    Vector4 ofscolor = _cfg.OfsIndicatorColor;
+                    if (ImGui.ColorEdit4("Offscreen indicator color", ref ofscolor, ImGuiColorEditFlags.NoInputs) == true)
+                    {
+                        _cfg.OfsIndicatorColor = ofscolor;
+                    }
+                    ImGui.EndChild();
+                    ImGui.EndTabItem();
+                }
+                if (ImGui.BeginTabItem("Trails"))
+                {
+                    ImGui.BeginChild("TrailChild");
+                    bool enabled = _cfg.TrailEnabled;
+                    if (ImGui.Checkbox("Enabled", ref enabled) == true)
+                    {
+                        _cfg.TrailEnabled = enabled;
+                    }
+                    bool incombat = _cfg.TrailOnlyShowInCombat;
+                    if (ImGui.Checkbox("Only show in combat", ref incombat) == true)
+                    {
+                        _cfg.TrailOnlyShowInCombat = incombat;
+                    }
+                    ImGui.Separator();
+                    int trailthr = _cfg.TrailThreshold;
+                    ImGui.Text("Trail movement threshold");
+                    if (ImGui.SliderInt("##Tmt", ref trailthr, 1, 50) == true)
+                    {
+                        _cfg.TrailThreshold = trailthr;
+                    }
+                    int trailttl = _cfg.TrailTTL;
+                    ImGui.Text("Trail time-to-live in milliseconds");
+                    if (ImGui.SliderInt("##Ttl", ref trailttl, 100, 5000) == true)
+                    {
+                        _cfg.TrailTTL = trailttl;
+                    }
+                    int trailsz = _cfg.TrailSize;
+                    ImGui.Text("Trail size");
+                    if (ImGui.SliderInt("##Trs", ref trailsz, 10, 50) == true)
+                    {
+                        _cfg.TrailSize = trailsz;
+                    }
+                    Vector4 trcolor = _cfg.TrailColor;
+                    if (ImGui.ColorEdit4("Trail color", ref trcolor, ImGuiColorEditFlags.NoInputs) == true)
+                    {
+                        _cfg.TrailColor = trcolor;
+                    }
+                    ImGui.EndChild();
+                    ImGui.EndTabItem();
+                }
+                ImGui.EndTabBar();
+                ImGui.EndChild();
+                ImGui.Separator();
+                Vector2 fp = ImGui.GetCursorPos();
+                ImGui.SetCursorPos(new Vector2(_adjusterX, fp.Y));
+                ImGui.PushStyleColor(ImGuiCol.Button, new Vector4(0.496f, 0.058f, 0.323f, 1.0f));
+                ImGui.PushStyleColor(ImGuiCol.ButtonActive, new Vector4(0.496f, 0.058f, 0.323f, 1.0f));
+                ImGui.PushStyleColor(ImGuiCol.ButtonHovered, new Vector4(0.4f, 0.4f, 0.4f, 1.0f));
+                if (ImGui.Button("Discord") == true)
+                {
+                    Task tx = new Task(() =>
+                    {
+                        Process p = new Process();
+                        p.StartInfo.UseShellExecute = true;
+                        p.StartInfo.FileName = @"https://discord.gg/6f9MY55";
+                        p.Start();
+                    });
+                    tx.Start();
+                }
+                ImGui.SameLine();
+                if (ImGui.Button("GitHub") == true)
+                {
+                    Task tx = new Task(() =>
+                    {
+                        Process p = new Process();
+                        p.StartInfo.UseShellExecute = true;
+                        p.StartInfo.FileName = @"https://github.com/paissaheavyindustries/WheresMouse";
+                        p.Start();
+                    });
+                    tx.Start();
+                }
+                ImGui.SameLine();
+                _adjusterX += ImGui.GetContentRegionAvail().X;
+                ImGui.PopStyleColor(3);
+                ImGui.End();
+                ImGui.PopStyleColor(3);
+            }
+            if (_cfg.Enabled == false && _cfg.PerEnabled == false && _cfg.TrailEnabled == false && _cfg.OfsEnabled == false)
+            {
+                return;
+            }
+            Vector2 disp = ImGui.GetIO().DisplaySize;
+            bool offscreen = (
+                (pos.X < 0.0f)
+                ||
+                (pos.X > disp.X)
+                ||
+                (pos.Y < 0.0f)
+                ||
+                (pos.Y > disp.Y)
+            );
+            bool inCombat = _cd[ConditionFlag.InCombat];
+            if (_cfg.Enabled == true && _where.active == true)
+            {
+                if ((inCombat == true || _cfg.OnlyShowInCombat == false) && (offscreen == false || _cfg.OnlyOnScreen == false))
+                {
+                    StartDrawing();
+                    float opacity = (float)(_where.activePower / 100.0);
+                    if (_cfg.DrawIndicatorCardinal == true)
+                    {
+                        float thickness = (float)(_cfg.IndicatorCardinalThickness * (_where.activePower / 100.0)) / 2.0f;
+                        ImGui.GetWindowDrawList().AddQuadFilled(
+                            new Vector2(pos.X - thickness, pos.Y - 20000),
+                            new Vector2(pos.X + thickness, pos.Y - 20000),
+                            new Vector2(pos.X + thickness, pos.Y + 20000),
+                            new Vector2(pos.X - thickness, pos.Y + 20000),
+                            ImGui.GetColorU32(new Vector4(
+                                _cfg.IndicatorCardinalColor.X,
+                                _cfg.IndicatorCardinalColor.Y,
+                                _cfg.IndicatorCardinalColor.Z,
+                                opacity
+                            ))
+                        );
+                        ImGui.GetWindowDrawList().AddQuadFilled(
+                            new Vector2(pos.X - 20000, pos.Y - thickness),
+                            new Vector2(pos.X - 20000, pos.Y + thickness),
+                            new Vector2(pos.X + 20000, pos.Y + thickness),
+                            new Vector2(pos.X + 20000, pos.Y - thickness),
+                            ImGui.GetColorU32(new Vector4(
+                                _cfg.IndicatorCardinalColor.X,
+                                _cfg.IndicatorCardinalColor.Y,
+                                _cfg.IndicatorCardinalColor.Z,
+                                opacity
+                            ))
+                        );
+                    }
+                    if (_cfg.DrawIndicatorIntercardinal == true)
+                    {
+                        float thickness = (float)(_cfg.IndicatorIntercardinalThickness * (_where.activePower / 100.0)) / 2.0f;
+                        ImGui.GetWindowDrawList().AddQuadFilled(
+                            new Vector2(pos.X - 20000 - thickness, pos.Y - 20000 + thickness),
+                            new Vector2(pos.X - 20000 + thickness, pos.Y - 20000 - thickness),
+                            new Vector2(pos.X + 20000 + thickness, pos.Y + 20000 - thickness),
+                            new Vector2(pos.X + 20000 - thickness, pos.Y + 20000 + thickness),
+                            ImGui.GetColorU32(new Vector4(
+                                _cfg.IndicatorIntercardinalColor.X,
+                                _cfg.IndicatorIntercardinalColor.Y,
+                                _cfg.IndicatorIntercardinalColor.Z,
+                                opacity
+                            ))
+                        );
+                        ImGui.GetWindowDrawList().AddQuadFilled(
+                            new Vector2(pos.X - 20000 - thickness, pos.Y + 20000 - thickness),
+                            new Vector2(pos.X - 20000 + thickness, pos.Y + 20000 + thickness),
+                            new Vector2(pos.X + 20000 + thickness, pos.Y - 20000 + thickness),
+                            new Vector2(pos.X + 20000 - thickness, pos.Y - 20000 - thickness),
+                            ImGui.GetColorU32(new Vector4(
+                                _cfg.IndicatorIntercardinalColor.X,
+                                _cfg.IndicatorIntercardinalColor.Y,
+                                _cfg.IndicatorIntercardinalColor.Z,
+                                opacity
+                            ))
+                        );
+                    }
+                    if (_cfg.DrawIndicatorCircle == true)
+                    {
+                        ImGui.GetWindowDrawList().AddCircleFilled(
+                            new Vector2(pos.X, pos.Y),
+                            (float)(_cfg.IndicatorCircleRadius * (_where.activePower / 100.0)),
+                            ImGui.GetColorU32(new Vector4(
+                                _cfg.IndicatorCircleColor.X,
+                                _cfg.IndicatorCircleColor.Y,
+                                _cfg.IndicatorCircleColor.Z,
+                                opacity
+                            )),
+                            32
+                        );
+                    }
+                }
+            }
+            if (_cfg.PerEnabled == true)
+            {
+                if ((inCombat == true || _cfg.PerOnlyShowInCombat == false) && (offscreen == false || _cfg.PerOnlyOnScreen == false))
+                {
+                    StartDrawing();
+                    ImGui.GetWindowDrawList().AddLine(
+                        new Vector2(0.0f),
+                        new Vector2(pos.X, pos.Y),
+                        ImGui.GetColorU32(_cfg.PerIndicatorColor),
+                        _cfg.PerIndicatorThickness
+                    );
+                    ImGui.GetWindowDrawList().AddLine(
+                        new Vector2(disp.X, 0.0f),
+                        new Vector2(pos.X, pos.Y),
+                        ImGui.GetColorU32(_cfg.PerIndicatorColor),
+                        _cfg.PerIndicatorThickness
+                    );
+                    ImGui.GetWindowDrawList().AddLine(
+                        new Vector2(0.0f, disp.Y),
+                        new Vector2(pos.X, pos.Y),
+                        ImGui.GetColorU32(_cfg.PerIndicatorColor),
+                        _cfg.PerIndicatorThickness
+                    );
+                    ImGui.GetWindowDrawList().AddLine(
+                        new Vector2(disp.X, disp.Y),
+                        new Vector2(pos.X, pos.Y),
+                        ImGui.GetColorU32(_cfg.PerIndicatorColor),
+                        _cfg.PerIndicatorThickness
+                    );
+                }
+            }
+            if (_cfg.TrailEnabled == true)
+            {
+                if (inCombat == true || _cfg.TrailOnlyShowInCombat == false)
+                {
+                    if (delta.Length() > _cfg.TrailThreshold)
+                    {
+                        maustrales.Add(new Maustrale() { Position = new Vector2(_prevPos.X, _prevPos.Y), TTL = _cfg.TrailTTL, TTLMax = _cfg.TrailTTL, Style = Maustrale.StyleEnum.Boingo, Color = _cfg.TrailColor });
+                    }
+                    if (maustrales.Count > 0)
+                    {
+                        StartDrawing();
+                        Trales();
+                    }
+                }
+            }
+            if (_cfg.OfsEnabled == true)
+            {
+                if (inCombat == true || _cfg.OfsOnlyShowInCombat == false)
+                {
+                    Vector2 arrowtip = new Vector2();
+                    float x = pos.X, y = pos.Y;
+                    if (offscreen == true)
+                    {
+                        x = Math.Clamp(x, 30.0f, disp.X - 30.0f);
+                        y = Math.Clamp(y, 30.0f, disp.Y - 30.0f);
+                        float angle = (float)(Math.Atan2(pos.Y - y, pos.X - x) + Math.PI);
+                        float time = (float)((DateTime.Now - _loaded).TotalMilliseconds / 200.0);
+                        float bounce = (float)(_cfg.OfsBounce == true ? 40.0f * Math.Abs(Math.Cos(time)) : 0.0f);
+                        arrowtip = new Vector2(
+                            x + (float)(Math.Cos(angle) * bounce),
+                            y + (float)(Math.Sin(angle) * bounce)
+                        );
+                        Vector2 arrowhead1 = new Vector2(
+                            arrowtip.X + (float)(Math.Cos(angle) * (_cfg.OfsIndicatorSize * 0.3f)) + (float)(Math.Cos(angle + Math.PI / 2.0f) * (_cfg.OfsIndicatorSize * 0.3f)),
+                            arrowtip.Y + (float)(Math.Sin(angle) * (_cfg.OfsIndicatorSize * 0.3f)) + (float)(Math.Sin(angle + Math.PI / 2.0f) * (_cfg.OfsIndicatorSize * 0.3f))
+                        );
+                        Vector2 arrowhead2 = new Vector2(
+                            arrowtip.X + (float)(Math.Cos(angle) * (_cfg.OfsIndicatorSize * 0.3f)) - (float)(Math.Cos(angle + Math.PI / 2.0f) * (_cfg.OfsIndicatorSize * 0.3f)),
+                            arrowtip.Y + (float)(Math.Sin(angle) * (_cfg.OfsIndicatorSize * 0.3f)) - (float)(Math.Sin(angle + Math.PI / 2.0f) * (_cfg.OfsIndicatorSize * 0.3f))
+                        );
+                        Vector2 arrowtail1 = new Vector2(
+                            arrowtip.X + (float)(Math.Cos(angle) * (_cfg.OfsIndicatorSize * 0.3f)) + (float)(Math.Cos(angle + Math.PI / 2.0f) * (_cfg.OfsIndicatorSize * 0.1f)),
+                            arrowtip.Y + (float)(Math.Sin(angle) * (_cfg.OfsIndicatorSize * 0.3f)) + (float)(Math.Sin(angle + Math.PI / 2.0f) * (_cfg.OfsIndicatorSize * 0.1f))
+                        );
+                        Vector2 arrowtail2 = new Vector2(
+                            arrowtip.X + (float)(Math.Cos(angle) * (_cfg.OfsIndicatorSize * 0.3f)) - (float)(Math.Cos(angle + Math.PI / 2.0f) * (_cfg.OfsIndicatorSize * 0.1f)),
+                            arrowtip.Y + (float)(Math.Sin(angle) * (_cfg.OfsIndicatorSize * 0.3f)) - (float)(Math.Sin(angle + Math.PI / 2.0f) * (_cfg.OfsIndicatorSize * 0.1f))
+                        );
+                        Vector2 arrowtail3 = new Vector2(
+                            arrowtail1.X + (float)(Math.Cos(angle) * _cfg.OfsIndicatorSize),
+                            arrowtail1.Y + (float)(Math.Sin(angle) * _cfg.OfsIndicatorSize)
+                        );
+                        Vector2 arrowtail4 = new Vector2(
+                            arrowtail2.X + (float)(Math.Cos(angle) * _cfg.OfsIndicatorSize),
+                            arrowtail2.Y + (float)(Math.Sin(angle) * _cfg.OfsIndicatorSize)
+                        );
+                        StartDrawing();
+                        float alpha = _cfg.OfsBlink == true ? _cfg.OfsIndicatorColor.W * (float)Math.Abs(Math.Cos(time)) : _cfg.OfsIndicatorColor.W;
+                        ImGui.GetWindowDrawList().PathLineTo(arrowtip);
+                        ImGui.GetWindowDrawList().PathLineTo(arrowhead1);
+                        ImGui.GetWindowDrawList().PathLineTo(arrowhead2);
+                        ImGui.GetWindowDrawList().PathFillConvex(
+                            ImGui.GetColorU32(new Vector4(
+                                _cfg.OfsIndicatorColor.X,
+                                _cfg.OfsIndicatorColor.Y,
+                                _cfg.OfsIndicatorColor.Z,
+                                alpha
+                            ))
+                        );
+                        ImGui.GetWindowDrawList().PathLineTo(arrowtail1);
+                        ImGui.GetWindowDrawList().PathLineTo(arrowtail2);
+                        ImGui.GetWindowDrawList().PathLineTo(arrowtail4);
+                        ImGui.GetWindowDrawList().PathLineTo(arrowtail3);
+                        ImGui.GetWindowDrawList().PathFillConvex(
+                            ImGui.GetColorU32(new Vector4(
+                                _cfg.OfsIndicatorColor.X,
+                                _cfg.OfsIndicatorColor.Y,
+                                _cfg.OfsIndicatorColor.Z,
+                                alpha
+                            ))
+                        );
+                    }
+                }
+            }
+            StopDrawing();
         }
 
         private void DrawConfigUI()
         {
-            _configOpen = true;
-        }
-
-        private void SaveConfig()
-        {
-            _cfg.Enabled = _cfgEnabled;
-            _cfg.OnlyShowInCombat = _cfgOnlyShowInCombat;
-            _cfg.DrawIndicatorCircle = _cfgDrawIndicatorCircle;
-            _cfg.DrawIndicatorCardinal = _cfgDrawIndicatorCardinal;
-            _cfg.DrawIndicatorIntercardinal = _cfgDrawIndicatorIntercardinal;
-            _cfg.IndicatorCircleRadius = _cfgIndicatorCircleRadius;
-            _cfg.IndicatorCardinalThickness = _cfgIndicatorCardinalThickness;
-            _cfg.IndicatorIntercardinalThickness = _cfgIndicatorIntercardinalThickness;
-            _cfg.IndicatorCircleColor = _cfgIndicatorCircleColor;
-            _cfg.IndicatorCardinalColor = _cfgIndicatorCardinalColor;
-            _cfg.IndicatorIntercardinalColor = _cfgIndicatorIntercardinalColor;
-            _cfg.DistanceHysteresis = _cfgDistanceHysteresis;
-            _cfg.DistanceDecayFactor = _cfgDistanceDecayFactor;
-            _cfg.ActiveDecayFactor = _cfgActiveDecayFactor;
-            _pi.SavePluginConfig(_cfg);
-        }
-
-        private void RevertConfig(Config cfg)
-        {
-            _cfgEnabled = cfg.Enabled;
-            _cfgOnlyShowInCombat = cfg.OnlyShowInCombat;
-            _cfgDrawIndicatorCircle = cfg.DrawIndicatorCircle;
-            _cfgDrawIndicatorCardinal = cfg.DrawIndicatorCardinal;
-            _cfgDrawIndicatorIntercardinal = cfg.DrawIndicatorIntercardinal;
-            _cfgIndicatorCircleRadius = cfg.IndicatorCircleRadius;
-            _cfgIndicatorCardinalThickness = cfg.IndicatorCardinalThickness;
-            _cfgIndicatorIntercardinalThickness = cfg.IndicatorIntercardinalThickness;
-            _cfgIndicatorCircleColor = cfg.IndicatorCircleColor;
-            _cfgIndicatorCardinalColor = cfg.IndicatorCardinalColor;
-            _cfgIndicatorIntercardinalColor = cfg.IndicatorIntercardinalColor;
-            _cfgDistanceHysteresis = cfg.DistanceHysteresis;
-            _cfgDistanceDecayFactor = cfg.DistanceDecayFactor;
-            _cfgActiveDecayFactor = cfg.ActiveDecayFactor;
-        }
-
-        private void RestoreConfig()
-        {
-            RevertConfig(new Config());
+            _cfg.Opened = true;
         }
 
     }
