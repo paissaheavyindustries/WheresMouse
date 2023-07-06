@@ -86,8 +86,17 @@ namespace WheresMouse
         public bool PerEnabled { get; set; } = false;
         public bool PerOnlyShowInCombat { get; set; } = false;
         public bool PerOnlyOnScreen { get; set; } = true;
+        public bool PerCardinals { get; set; } = false;
+        public bool PerIntercardinals { get; set; } = false;
+        public bool PerCorners { get; set; } = true;
         public int PerIndicatorThickness { get; set; } = 5;
         public Vector4 PerIndicatorColor { get; set; } = new Vector4(1.0f, 1.0f, 0.0f, 0.25f);
+
+        public bool PerCircle { get; set; } = false;
+        public bool PerCircleFilled { get; set; } = false;
+        public int PerCircleRadius { get; set; } = 10;
+        public int PerCircleThickness { get; set; } = 5;
+        public Vector4 PerCircleColor { get; set; } = new Vector4(1.0f, 1.0f, 0.0f, 0.25f);
 
         public bool OfsEnabled { get; set; } = false;
         public bool OfsOnlyShowInCombat { get; set; } = false;

@@ -12,6 +12,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Numerics;
+using System.Reflection;
 using System.Threading.Tasks;
 
 namespace WheresMouse
@@ -295,9 +296,24 @@ namespace WheresMouse
                         _cfg.PerOnlyOnScreen = onscreen;
                     }
                     ImGui.Separator();
+                    bool percar = _cfg.PerCardinals;
+                    if (ImGui.Checkbox("Show cardinal lines", ref percar) == true)
+                    {
+                        _cfg.PerCardinals = percar;
+                    }
+                    bool pericar = _cfg.PerIntercardinals;
+                    if (ImGui.Checkbox("Show intercardinal lines", ref pericar) == true)
+                    {
+                        _cfg.PerIntercardinals = pericar;
+                    }
+                    bool percorner = _cfg.PerCorners;
+                    if (ImGui.Checkbox("Show corner lines", ref percorner) == true)
+                    {
+                        _cfg.PerCorners = percorner;
+                    }
                     int perthick = _cfg.PerIndicatorThickness;
                     ImGui.Text("Line thickness in pixels");
-                    if (ImGui.SliderInt("##Cltip", ref perthick, 5, 50) == true)
+                    if (ImGui.SliderInt("##Cltip", ref perthick, 1, 50) == true)
                     {
                         _cfg.PerIndicatorThickness = perthick;
                     }
@@ -306,6 +322,36 @@ namespace WheresMouse
                     {
                         _cfg.PerIndicatorColor = percolor;
                     }
+                    ImGui.Separator();
+
+                    bool perci = _cfg.PerCircle;
+                    if (ImGui.Checkbox("Show circle", ref perci) == true)
+                    {
+                        _cfg.PerCircle = perci;
+                    }
+                    bool percifill = _cfg.PerCircleFilled;
+                    if (ImGui.Checkbox("Filled circle", ref percifill) == true)
+                    {
+                        _cfg.PerCircleFilled = percifill;
+                    }
+                    int percirad = _cfg.PerCircleRadius;
+                    ImGui.Text("Circle radius in pixels");
+                    if (ImGui.SliderInt("##Cirad", ref percirad, 5, 50) == true)
+                    {
+                        _cfg.PerCircleRadius = percirad;
+                    }
+                    int percithick = _cfg.PerCircleThickness;
+                    ImGui.Text("Line thickness in pixels");
+                    if (ImGui.SliderInt("##Cithick", ref percithick, 1, 50) == true)
+                    {
+                        _cfg.PerCircleThickness = percithick;
+                    }
+                    Vector4 percicolor = _cfg.PerCircleColor;
+                    if (ImGui.ColorEdit4("Circle color", ref percicolor, ImGuiColorEditFlags.NoInputs) == true)
+                    {
+                        _cfg.PerCircleColor = percicolor;
+                    }
+
                     ImGui.EndChild();
                     ImGui.EndTabItem();
                 }
@@ -521,31 +567,90 @@ namespace WheresMouse
             {
                 if ((inCombat == true || _cfg.PerOnlyShowInCombat == false) && (offscreen == false || _cfg.PerOnlyOnScreen == false))
                 {
-                    StartDrawing();
-                    ImGui.GetWindowDrawList().AddLine(
-                        new Vector2(0.0f),
-                        new Vector2(pos.X, pos.Y),
-                        ImGui.GetColorU32(_cfg.PerIndicatorColor),
-                        _cfg.PerIndicatorThickness
-                    );
-                    ImGui.GetWindowDrawList().AddLine(
-                        new Vector2(disp.X, 0.0f),
-                        new Vector2(pos.X, pos.Y),
-                        ImGui.GetColorU32(_cfg.PerIndicatorColor),
-                        _cfg.PerIndicatorThickness
-                    );
-                    ImGui.GetWindowDrawList().AddLine(
-                        new Vector2(0.0f, disp.Y),
-                        new Vector2(pos.X, pos.Y),
-                        ImGui.GetColorU32(_cfg.PerIndicatorColor),
-                        _cfg.PerIndicatorThickness
-                    );
-                    ImGui.GetWindowDrawList().AddLine(
-                        new Vector2(disp.X, disp.Y),
-                        new Vector2(pos.X, pos.Y),
-                        ImGui.GetColorU32(_cfg.PerIndicatorColor),
-                        _cfg.PerIndicatorThickness
-                    );
+                    if (_cfg.PerCorners == true)
+                    {
+                        StartDrawing();
+                        ImGui.GetWindowDrawList().AddLine(
+                            new Vector2(0.0f),
+                            new Vector2(pos.X, pos.Y),
+                            ImGui.GetColorU32(_cfg.PerIndicatorColor),
+                            _cfg.PerIndicatorThickness
+                        );
+                        ImGui.GetWindowDrawList().AddLine(
+                            new Vector2(disp.X, 0.0f),
+                            new Vector2(pos.X, pos.Y),
+                            ImGui.GetColorU32(_cfg.PerIndicatorColor),
+                            _cfg.PerIndicatorThickness
+                        );
+                        ImGui.GetWindowDrawList().AddLine(
+                            new Vector2(0.0f, disp.Y),
+                            new Vector2(pos.X, pos.Y),
+                            ImGui.GetColorU32(_cfg.PerIndicatorColor),
+                            _cfg.PerIndicatorThickness
+                        );
+                        ImGui.GetWindowDrawList().AddLine(
+                            new Vector2(disp.X, disp.Y),
+                            new Vector2(pos.X, pos.Y),
+                            ImGui.GetColorU32(_cfg.PerIndicatorColor),
+                            _cfg.PerIndicatorThickness
+                        );
+                    }
+                    if (_cfg.PerCardinals == true)
+                    {
+                        StartDrawing();                        
+                        ImGui.GetWindowDrawList().AddLine(
+                            new Vector2(0.0f, pos.Y),
+                            new Vector2(disp.X, pos.Y),
+                            ImGui.GetColorU32(_cfg.PerIndicatorColor),
+                            _cfg.PerIndicatorThickness
+                        );
+                        ImGui.GetWindowDrawList().AddLine(
+                            new Vector2(pos.X, 0.0f),
+                            new Vector2(pos.X, disp.Y),
+                            ImGui.GetColorU32(_cfg.PerIndicatorColor),
+                            _cfg.PerIndicatorThickness
+                        );
+                    }
+                    if (_cfg.PerIntercardinals == true)
+                    {
+                        StartDrawing();
+                        ImGui.GetWindowDrawList().AddLine(
+                            new Vector2(pos.X - pos.Y, 0.0f),
+                            new Vector2(pos.X + (disp.Y - pos.Y), disp.Y),
+                            ImGui.GetColorU32(_cfg.PerIndicatorColor),
+                            _cfg.PerIndicatorThickness
+                        );
+                        ImGui.GetWindowDrawList().AddLine(
+                            new Vector2(pos.X + pos.Y, 0.0f),
+                            new Vector2(pos.X - (disp.Y - pos.Y), disp.Y),
+                            ImGui.GetColorU32(_cfg.PerIndicatorColor),
+                            _cfg.PerIndicatorThickness
+                        );
+                    }
+                    if (_cfg.PerCircle == true)
+                    {
+                        StartDrawing();
+                        if (_cfg.PerCircleFilled == true)
+                        {
+                            ImGui.GetWindowDrawList().AddCircleFilled(
+                                new Vector2(pos.X, pos.Y),
+                                _cfg.PerCircleRadius,
+                                ImGui.GetColorU32(_cfg.PerIndicatorColor),
+                                20
+                            );
+                        }
+                        else
+                        {
+                            ImGui.GetWindowDrawList().AddCircle(
+                                new Vector2(pos.X, pos.Y),
+                                _cfg.PerCircleRadius,
+                                ImGui.GetColorU32(_cfg.PerIndicatorColor),
+                                20,
+                                _cfg.PerCircleThickness
+                            );
+                        }
+
+                    }
                 }
             }
             if (_cfg.TrailEnabled == true)
