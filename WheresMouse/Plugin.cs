@@ -1,18 +1,15 @@
-﻿using Dalamud.Game;
-using Dalamud.Game.ClientState;
-using Dalamud.Game.ClientState.Conditions;
+﻿using Dalamud.Game.ClientState.Conditions;
 using Dalamud.Game.Command;
-using Dalamud.Game.Gui;
-using Dalamud.Interface;
+using Dalamud.Interface.Utility;
 using Dalamud.IoC;
 using Dalamud.Logging;
 using Dalamud.Plugin;
+using Dalamud.Plugin.Services;
 using ImGuiNET;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Numerics;
-using System.Reflection;
 using System.Threading.Tasks;
 
 namespace WheresMouse
@@ -24,9 +21,9 @@ namespace WheresMouse
         public string Name => "Where's Mouse";
 
         private DalamudPluginInterface _pi { get; init; }
-        private CommandManager _cm { get; init; }
-        private ClientState _cs { get; init; }
-        private Condition _cd { get; init; }
+        private ICommandManager _cm { get; init; }
+        private IClientState _cs { get; init; }
+        private ICondition _cd { get; init; }
 
         private Wherenator _where = new Wherenator();
         private Config _cfg;
@@ -41,11 +38,11 @@ namespace WheresMouse
 
         public Plugin(
             [RequiredVersion("1.0")] DalamudPluginInterface pluginInterface,
-            [RequiredVersion("1.0")] CommandManager commandManager,
-            [RequiredVersion("1.0")] ClientState clientState,
-            [RequiredVersion("1.0")] Framework framework,
-            [RequiredVersion("1.0")] GameGui gameGui,
-            [RequiredVersion("1.0")] Condition condition
+            [RequiredVersion("1.0")] ICommandManager commandManager,
+            [RequiredVersion("1.0")] IClientState clientState,
+            [RequiredVersion("1.0")] IFramework framework,
+            [RequiredVersion("1.0")] IGameGui gameGui,
+            [RequiredVersion("1.0")] ICondition condition
         )
         {
             _pi = pluginInterface;
