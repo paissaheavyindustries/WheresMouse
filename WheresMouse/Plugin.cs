@@ -418,7 +418,7 @@ namespace WheresMouse
                     }
                     int trailsz = _cfg.TrailSize;
                     ImGui.Text("Trail size");
-                    if (ImGui.SliderInt("##Trs", ref trailsz, 10, 50) == true)
+                    if (ImGui.SliderInt("##Trs", ref trailsz, 3, 50) == true)
                     {
                         _cfg.TrailSize = trailsz;
                     }
