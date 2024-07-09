@@ -20,10 +20,11 @@ namespace WheresMouse
 
         public string Name => "Where's Mouse";
 
-        private DalamudPluginInterface _pi { get; init; }
+        private IDalamudPluginInterface _pi { get; init; }
         private ICommandManager _cm { get; init; }
         private IClientState _cs { get; init; }
         private ICondition _cd { get; init; }
+        private IPluginLog _lo { get; init; }
 
         private Wherenator _where = new Wherenator();
         private Config _cfg;
@@ -37,20 +38,23 @@ namespace WheresMouse
         private List<Maustrale> maustrales = new List<Maustrale>();
 
         public Plugin(
-            [RequiredVersion("1.0")] DalamudPluginInterface pluginInterface,
-            [RequiredVersion("1.0")] ICommandManager commandManager,
-            [RequiredVersion("1.0")] IClientState clientState,
-            [RequiredVersion("1.0")] IFramework framework,
-            [RequiredVersion("1.0")] IGameGui gameGui,
-            [RequiredVersion("1.0")] ICondition condition
+            IDalamudPluginInterface pluginInterface,
+            ICommandManager commandManager,
+            IClientState clientState,
+            IFramework framework,
+            IGameGui gameGui,
+            ICondition condition,
+            IPluginLog log
         )
         {
             _pi = pluginInterface;
             _cm = commandManager;
             _cs = clientState;
             _cd = condition;
+            _lo = log;
             _cfg = _pi.GetPluginConfig() as Config ?? new Config();
             _pi.UiBuilder.Draw += DrawUI;
+            _pi.UiBuilder.OpenMainUi += DrawConfigUI;
             _pi.UiBuilder.OpenConfigUi += DrawConfigUI;
             _cm.AddHandler("/wheremouse", new CommandInfo(OnCommand)
             {
@@ -61,6 +65,7 @@ namespace WheresMouse
         public void Dispose()
         {
             _pi.UiBuilder.Draw -= DrawUI;
+            _pi.UiBuilder.OpenMainUi -= DrawConfigUI;
             _pi.UiBuilder.OpenConfigUi -= DrawConfigUI;
             SaveConfig();
             _cm.RemoveHandler("/wheremouse");
@@ -68,7 +73,7 @@ namespace WheresMouse
 
         public void SaveConfig()
         {
-            PluginLog.Debug("Saving config");
+            _lo.Debug("Saving config");
             _pi.SavePluginConfig(_cfg);
         }
 
