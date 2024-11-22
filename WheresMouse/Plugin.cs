@@ -1,10 +1,8 @@
 ﻿using Dalamud.Game.ClientState.Conditions;
 using Dalamud.Game.Command;
 using Dalamud.Interface.Utility;
-using Dalamud.IoC;
-using Dalamud.Logging;
 using Dalamud.Plugin;
-using Dalamud.Plugin.Services;
+using FFXIVClientStructs.FFXIV.Common.Lua;
 using ImGuiNET;
 using System;
 using System.Collections.Generic;
@@ -20,12 +18,7 @@ namespace WheresMouse
 
         public string Name => "Where's Mouse";
 
-        private IDalamudPluginInterface _pi { get; init; }
-        private ICommandManager _cm { get; init; }
-        private IClientState _cs { get; init; }
-        private ICondition _cd { get; init; }
-        private IPluginLog _lo { get; init; }
-
+        private Service _svc = null;
         private Wherenator _where = new Wherenator();
         private Config _cfg;
         private float _adjusterX = 0.0f;
@@ -37,26 +30,14 @@ namespace WheresMouse
 
         private List<Maustrale> maustrales = new List<Maustrale>();
 
-        public Plugin(
-            IDalamudPluginInterface pluginInterface,
-            ICommandManager commandManager,
-            IClientState clientState,
-            IFramework framework,
-            IGameGui gameGui,
-            ICondition condition,
-            IPluginLog log
-        )
+        public Plugin(IDalamudPluginInterface pluginInterface)
         {
-            _pi = pluginInterface;
-            _cm = commandManager;
-            _cs = clientState;
-            _cd = condition;
-            _lo = log;
-            _cfg = _pi.GetPluginConfig() as Config ?? new Config();
-            _pi.UiBuilder.Draw += DrawUI;
-            _pi.UiBuilder.OpenMainUi += DrawConfigUI;
-            _pi.UiBuilder.OpenConfigUi += DrawConfigUI;
-            _cm.AddHandler("/wheremouse", new CommandInfo(OnCommand)
+            _svc = pluginInterface.Create<Service>();
+            _cfg = _svc.pi.GetPluginConfig() as Config ?? new Config();
+            _svc.pi.UiBuilder.Draw += DrawUI;
+            _svc.pi.UiBuilder.OpenMainUi += DrawConfigUI;
+            _svc.pi.UiBuilder.OpenConfigUi += DrawConfigUI;
+            _svc.cm.AddHandler("/wheremouse", new CommandInfo(OnCommand)
             {
                 HelpMessage = "Open Where's Mouse configuration"
             });
@@ -64,17 +45,17 @@ namespace WheresMouse
 
         public void Dispose()
         {
-            _pi.UiBuilder.Draw -= DrawUI;
-            _pi.UiBuilder.OpenMainUi -= DrawConfigUI;
-            _pi.UiBuilder.OpenConfigUi -= DrawConfigUI;
+            _svc.pi.UiBuilder.Draw -= DrawUI;
+            _svc.pi.UiBuilder.OpenMainUi -= DrawConfigUI;
+            _svc.pi.UiBuilder.OpenConfigUi -= DrawConfigUI;
             SaveConfig();
-            _cm.RemoveHandler("/wheremouse");
+            _svc.cm.RemoveHandler("/wheremouse");
         }
 
         public void SaveConfig()
         {
-            _lo.Debug("Saving config");
-            _pi.SavePluginConfig(_cfg);
+            _svc.lo.Debug("Saving config");
+            _svc.pi.SavePluginConfig(_cfg);
         }
 
         private void OnCommand(string command, string args)
@@ -173,12 +154,13 @@ namespace WheresMouse
                 if (ImGui.Begin(Name, ref open, ImGuiWindowFlags.NoCollapse) == false)
                 {
                     ImGui.End();
-                    ImGui.PopStyleColor(3);
+                    ImGui.PopStyleColor(3);                    
                     return;
                 }
                 if (open == false)
                 {
                     _cfg.Opened = false;
+                    SaveConfig();
                     ImGui.End();
                     ImGui.PopStyleColor(3);
                     return;
@@ -486,7 +468,7 @@ namespace WheresMouse
                 ||
                 (pos.Y > disp.Y)
             );
-            bool inCombat = _cd[ConditionFlag.InCombat];
+            bool inCombat = _svc.cd[ConditionFlag.InCombat];
             if (_cfg.Enabled == true && _where.active == true)
             {
                 if ((inCombat == true || _cfg.OnlyShowInCombat == false) && (offscreen == false || _cfg.OnlyOnScreen == false))
